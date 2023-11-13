@@ -1,0 +1,73 @@
+body {
+  background: #666;
+  color: #fff;
+}
+.fullpage{
+	width:100%;
+	height:100%;
+	padding:0px;
+	margin:0px;
+	border-collapse:collapse;
+}
+.navbar {
+  border-bottom: #42538e 3px solid;
+}
+.msgForm{
+	flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+	width:400px;
+	height:220px;
+	border: 2px solid #54B4D8;
+	background-color: #FFF;
+    border-radius: 4px;
+	position: absolute;
+	left: calc(50% - 175px);
+	top: 200px;
+}.msgForm > div.title{
+	text-align:center;
+	color:#000;
+	font-size:18px;
+	padding:5px;
+	width:100%;
+}
+.card-img-top {
+  width: 100%;
+  border-top-left-radius: calc(0.25rem - 1px);
+  border-top-right-radius: calc(0.25rem - 1px);
+  border-style: none;
+}
+.homeimg{
+	background: url("../img/image.jpeg");
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-attachment: fixed;
+}
+.importimg{
+	background: url("../img/import.jfif");
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-attachment: fixed;
+}
+#home-section {
+  min-height: 700px;
+}
+#home-section .dark-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 700px;
+  background-color: rgba(8, 8, 8, 0.7);
+}
+#home-section .home-inner {
+  padding-top: 150px;
+}
+#home-section .card-form {
+  opacity: 0.8;
+}
+
+@media only screen and (max-width: 768px) {
+  
+}

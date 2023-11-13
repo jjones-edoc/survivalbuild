@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.0.13/css/all.css"
+      integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css"
+      integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <title>Survival Builder</title>
+    <script
+      src="http://code.jquery.com/jquery-3.3.1.min.js"
+      integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+      integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"
+      integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T"
+      crossorigin="anonymous"
+    ></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script src="js/jfunctions.js"></script>
+	<script src="js/engine.js"></script>
+	<script src="js/sumitems.js"></script>
+	<script src="js/buildings.js"></script>
+	<script src="js/turnblocks.js"></script>
+	<script src="js/formsandinputs.js"></script>
+	<script src="js/buildinggen.js"></script>
+	<script src="js/buildingroof.js"></script>
+	<script src="js/buildingbase.js"></script>
+	<script src="js/buildingwall.js"></script>
+    <script>
+		var blocks=[];
+		var difblocks=[];
+		var lowestblock=[]
+		var highestblock=[];
+		var blocktypes=[];
+		var southcommandlist=[];
+		var southcommandlist2=[];
+		var southoffset="";
+		var westcommandlist=[];
+		var westcommandlist2=[];
+		var westoffset="";
+		var northcommandlist=[];
+		var northcommandlist2=[];
+		var northoffset="";
+		var eastcommandlist=[];
+		var eastcommandlist2=[];
+		var eastoffset="";
+		var commandlist=[];
+		var	commandlist2=[];
+		var diflist=[];
+		var DifFile=false;
+		function DisableButtons(){
+		}
+		function EnableButtons(){
+		}
+		function BuildDifBlocks(){
+			var newblocks=[];
+			if(difblocks.length != blocks.length){
+				console.log('Block length does not match'+difblocks.length+'!='+blocks.length);
+				SetError('Block length does not match'+difblocks.length+'!='+blocks.length);
+				return;
+			}else{
+				for(var i=0;i<blocks.length;i++){
+					if((blocks[i].x==difblocks[i].x)&&(blocks[i].y==difblocks[i].y)&&(blocks[i].z==difblocks[i].z)){
+						newblocks.push(DeepCopy(difblocks[i]));
+						if(blocks[i].command == difblocks[i].command){
+							newblocks[i].name='nodif';
+							newblocks[i].command='nodif';
+						}else{
+							console.log(blocks[i].command +'<>'+ difblocks[i].command);
+						}
+						break;
+					}				
+				}
+			}
+			blocks=DeepCopy(newblocks);
+			analyzeBlocks();
+			displayCurrentBlockData();
+		}
+		var filesToLoad=[];
+		var filescount=0;
+		function LoadNextUploadedFile(){
+			if(filesToLoad[filescount].msg!=""){
+				pleaseWait("");
+				SetError(filesToLoad[filescount].msg);
+			}else{
+				pleaseWait("Loading file...");
+				doRestCall("scmread.php",{action:"loadit",filename:filesToLoad[filescount].uniqnm},processLoadSchJSON);
+			}
+		}
+		function uploadmsg(fileArrayJSON){
+			filescount=0;
+			filesToLoad = DeepCopy(fileArrayJSON);
+			LoadNextUploadedFile();
+		}
+		function processLoadSchJSON(theJSON){
+			pleaseWait("");
+			var theData = JSON.parse(theJSON);
+			if(!theData.result){
+				SetError(theData.error);
+			}else{
+				if(theData.building){
+					buildings.push(theData.building);
+					BuildInd = buildings.length-1;
+				}else{
+					if(theData.blocks.length > 0){
+						var xoffset=parseInt(get('xoffset').value);
+						var yoffset=parseInt(get('yoffset').value);
+						var zoffset=parseInt(get('zoffset').value);
+						lastxoffset=get('xoffset').value;
+						lastyoffset=get('yoffset').value;
+						lastzoffset=get('zoffset').value;
+						lastname=get('building').value;
+						if(!xoffset){xoffset=0;}
+						if(!yoffset){yoffset=0;}
+						if(!zoffset){zoffset=0;}
+						//if(BuildInd == -1){
+							var filesplt=filesToLoad[filescount].filename.split('.');
+							var filename=filesplt[0];
+							buildings.push({blocks:[],commands:[],blocktypes:[],condensedtypes:[],name:filename,chests:[],lx:0,ly:0,lz:0,hx:0,hy:0,hz:0});
+							BuildInd = buildings.length-1;
+						//}
+						theData.blocks.sort(function (a,b){
+							if(a.x < b.x){
+								return -1;
+							}
+							if(a.x > b.x){
+								return 1;
+							}
+							if(a.y < b.y){
+								return -1;
+							}
+							if(a.y > b.y){
+								return 1;
+							}
+							if(a.z < b.z){
+								return -1;
+							}
+							if(a.z > b.z){
+								return 1;
+							}
+							return 0;
+						});
+						for(var b=0;b<theData.blocks.length;b++){
+							theData.blocks[b].x += xoffset;
+							theData.blocks[b].y += yoffset;
+							theData.blocks[b].z += zoffset;
+							buildings[BuildInd].blocks.push(DeepCopy(theData.blocks[b]));
+						}
+					}
+				}
+				filescount++;
+				if(filescount<filesToLoad.length){
+					BuildInd=-1;
+					LoadNextUploadedFile();
+				}else{
+					DrawImportBuildings();
+					get('building').value=buildings[BuildInd].name;
+				}
+			}
+		}
+		function addBlockToTypes(Block){
+			for(var b=0;b<blocktypes.length;b++){
+				if(blocktypes[b].name==Block.name && blocktypes[b].command==Block.command){
+					blocktypes[b].count++;
+					return;
+				}
+			}
+			blocktypes.push({name:Block.name,count:1,command:Block.command});
+		}
+		function getBlockStr(Block){
+			return 'X: '+Block.x+' Y: '+Block.y+' Z: '+Block.z+' Type: '+Block.name+' Command: '+Block.name;
+		}
+		function analyzeBlocks(){
+			lowestblock=[]
+			highestblock=[];
+			blocktypes=[];
+			condensedtypes=[];
+			for(var i=0;i<blocks.length;i++){
+				if(lowestblock.x == undefined){
+					lowestblock=DeepCopy(blocks[i]);
+					highestblock=DeepCopy(blocks[i]);
+				}else{
+					//Check if lowest block
+					if(blocks[i].y<lowestblock.y){
+						lowestblock=DeepCopy(blocks[i]);
+					}else if(blocks[i].y == lowestblock.y){
+						if(blocks[i].x < lowestblock.x){
+							lowestblock=DeepCopy(blocks[i]);
+						}else if(blocks[i].x == lowestblock.x){
+							if(blocks[i].z < lowestblock.z){
+								lowestblock=DeepCopy(blocks[i]);
+							}
+						}
+					}
+					//Check if highest block
+					if(blocks[i].y>highestblock.y){
+						highestblock=DeepCopy(blocks[i]);
+					}else if(blocks[i].y == highestblock.y){
+						if(blocks[i].x > highestblock.x){
+							highestblock=DeepCopy(blocks[i]);
+						}else if(blocks[i].x == highestblock.x){
+							if(blocks[i].z > highestblock.z){
+								highestblock=DeepCopy(blocks[i]);
+							}
+						}
+					}
+				}
+				//Add block type
+				addBlockToTypes(blocks[i]);
+				addCondensedType(blocks[i]);
+				if(blocks[i].name=='item_frame'||blocks[i].name=='armor_stand'){
+					for(let t=0;t<blocks[i].items.length;t++){
+						let block = {name:blocks[i].items[t]};
+						addCondensedType(block);
+					}					
+				}
+			}
+		}
+		function getXYZTxt(Block){
+			return '~'+Block.x+' ~'+Block.y+' ~'+Block.z;
+		}
+		function typecmd(){
+			
+		}
+		function createNESWData(){
+			southcommandlist=[];
+			southcommandlist2=[];
+			westcommandlist=[];
+			westcommandlist2=[];
+			northcommandlist=[];
+			northcommandlist2=[];
+			eastcommandlist=[];
+			eastcommandlist2=[];
+			var orgblocks = DeepCopy(blocks);
+			//create south
+			var ofx = parseInt(highestblock.x / 2);
+			var ofz = highestblock.z+2;
+			southoffset = "Offset&nbsp;x:-"+ofx+"&nbsp;&nbsp;z:-"+ofz;
+			createBlockCommands();
+			southcommandlist=DeepCopy(commandlist);
+			southcommandlist2=DeepCopy(commandlist2);
+			blocks = DeepCopy(orgblocks);
+			turnwest(blocks);
+			blocks = DeepCopy(blockninty);
+			analyzeBlocks();
+			ofx = parseInt(lowestblock.x*-1)+2;
+			ofz = parseInt((highestblock.z*-1)/2);
+			westoffset = "Offset&nbsp;x:"+ofx+"&nbsp;&nbsp;z:"+ofz;
+			createBlockCommands();
+			westcommandlist=DeepCopy(commandlist);
+			westcommandlist2=DeepCopy(commandlist2);
+			blocks = DeepCopy(orgblocks);
+			turnnorth(blocks);
+			blocks = DeepCopy(blockninty);
+			ofx = parseInt((lowestblock.x*-1)/2);
+			ofz = parseInt(highestblock.z)+2;
+			northoffset = "Offset&nbsp;x:"+ofx+"&nbsp;&nbsp;z:"+ofz;
+			analyzeBlocks();
+			createBlockCommands();
+			northcommandlist=DeepCopy(commandlist);
+			northcommandlist2=DeepCopy(commandlist2);
+			blocks = DeepCopy(orgblocks);
+			turneast(blocks);
+			blocks = DeepCopy(blockninty);
+			analyzeBlocks();
+			ofx = parseInt(highestblock.x)+2;
+			ofz = parseInt((lowestblock.z)/2)*-1;
+			eastoffset = "Offset&nbsp;x:-"+ofx+"&nbsp;&nbsp;z:"+ofz;
+			createBlockCommands();
+			eastcommandlist=DeepCopy(commandlist);
+			eastcommandlist2=DeepCopy(commandlist2);
+			showCommandList();
+		}
+		function createBlockCommands(){
+			commandlist=[];
+			commandlist2=[];
+			var mostBlock = 'air';
+			var mostCount = 0;
+			for(var t=0;t<blocktypes.length;t++){
+				if(blocktypes[t].count > mostCount){
+					mostBlock=blocktypes[t].command;
+					mostCount=blocktypes[t].count;
+				}
+			}
+			if(!DifFile){
+				commandlist.push("fill "+getXYZTxt(lowestblock)+' '+getXYZTxt(highestblock)+' '+mostBlock);
+			}
+			var blockdata=[];
+			for(var x=lowestblock.x;x<=highestblock.x;x++){
+				blockdata[x]=[];
+				for(var y=lowestblock.y;y<=highestblock.y;y++){
+					blockdata[x][y]=[];
+					for(var z=lowestblock.z;z<=highestblock.z;z++){
+						blockdata[x][y][z]=[];
+					}
+				}
+			}
+			for(var i=0;i<blocks.length;i++){
+				blockdata[blocks[i].x][blocks[i].y][blocks[i].z]={command:blocks[i].command,nextblock:false};
+			}
+			var x=0;var y=0;var z=0;
+			var sx=0;var sy=0;var sz=0; var lx=0;var ly=0;var lz=0; var sid=-1; var sdv=0;
+			var bcmd=""; var sameblock=false;
+			for(o=0;o<blocks.length;o++){
+				x=blocks[o].x;
+				y=blocks[o].y;
+				z=blocks[o].z;
+				if(blockdata[x][y][z].command=='nodif'){
+					continue;
+				}
+				if(blockdata[x][y][z].command==mostBlock && !DifFile){
+					continue;
+				}
+				if(blockdata[x][y][z].nextblock){
+					continue;
+				}
+				sx=x;sy=y;sz=z;lx=x;ly=y;lz=z;px=x;py=y;pz=z;
+				bcmd=blockdata[x][y][z].command; 
+				sameblock=true;conx=0;
+				while(sameblock){
+					px++;
+					if(blockdata[px]!=undefined && blockdata[px][py]!=undefined && blockdata[px][py][pz]!=undefined){
+						if((blockdata[px][py][pz].command==bcmd)){
+							lx=px;conx++;
+						}else{
+							sameblock=false;
+						}
+					}else{sameblock=false;}
+				}
+				sameblock=true;cony=0;px=sx;
+				while(sameblock){
+					py++;
+					for(j=0;j<=conx;j++){
+						if(blockdata[(px+j)]!=undefined && blockdata[(px+j)][py]!=undefined && blockdata[(px+j)][py][pz]!=undefined){
+							if((blockdata[(px+j)][py][pz].command!=bcmd)){
+								sameblock=false;
+							}
+						}else{sameblock=false;}
+					}
+					if(sameblock){
+						cony++;
+						ly=py;
+					}
+				}
+				sameblock=true;conz=0;px=sx;py=sy;
+				while(sameblock){
+					pz++;
+					for(j=0;j<=conx;j++){
+						for(k=0;k<=cony;k++){
+							if(blockdata[(px+j)]!=undefined && blockdata[(px+j)][(py+k)]!=undefined && blockdata[(px+j)][(py+k)][pz]!=undefined){
+								if((blockdata[(px+j)][(py+k)][pz].command!=bcmd)){
+									sameblock=false;
+								}
+							}else{sameblock=false;}
+						}
+					}
+					if(sameblock){
+						conz++;
+						lz=pz;
+					}
+				}
+				for(l=sx;l<=lx;l++){
+					for(j=sy;j<=ly;j++){
+						for(k=sz;k<=lz;k++){
+							blockdata[l][j][k].nextblock=true;
+						}
+					}
+				}
+				var s='~'+sx+' ~'+sy+' ~'+sz; 
+				var e='~'+lx+' ~'+ly+' ~'+lz;
+				var grp=0;
+				for(var t=0;t<blocktypes.length;t++){
+					if(blocktypes[t].command==blocks[o].command){
+						grp = get("SlGrp"+t).value;
+					}
+				}
+				if(s==e){
+					if(grp==0){
+						commandlist.push('setblock '+s+' '+bcmd);
+					}else{
+						commandlist2.push('setblock '+s+' '+bcmd);
+					}
+				}else{
+					if(grp==0){
+						commandlist.push('fill '+s+' '+e+' '+bcmd);
+					}else{
+						commandlist2.push('fill '+s+' '+e+' '+bcmd);
+					}
+				}
+			}
+		}
+		function showCommandList(){
+			var pg ='<div class="row m-3">';
+				pg += '<div class="p-3 bg-light text-dark row border border-primary rounded col-md-12 justify-content-center">'
+					pg+='<h3 class="row col-sm-12 justify-content-center">South Commands:</h3>';
+					pg+='<div class="col-sm-12" id="Offsetcell">'+southoffset+'</div>';
+					pg +='<div class="col-lg-6"><textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<southcommandlist.length;c++){
+						pg+=southcommandlist[c]+'\n';
+					}
+					pg +='</textarea></div><div class="col-lg-6">';
+					pg +='<textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<southcommandlist2.length;c++){
+						pg+=southcommandlist2[c]+'\n';
+					}
+					pg +='</textarea></div>';
+					pg+='<h3 class="row col-sm-12 justify-content-center">West Commands:</h3>';
+					pg+='<div class="col-sm-12" id="Offsetcell">'+westoffset+'</div>';
+					pg +='<div class="col-lg-6"><textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<westcommandlist.length;c++){
+						pg+=westcommandlist[c]+'\n';
+					}
+					pg +='</textarea></div><div class="col-lg-6">';
+					pg +='<textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<westcommandlist2.length;c++){
+						pg+=westcommandlist2[c]+'\n';
+					}
+					pg +='</textarea></div>';
+					pg+='<h3 class="row col-sm-12 justify-content-center">North Commands:</h3>';
+					pg+='<div class="col-sm-12" id="Offsetcell">'+northoffset+'</div>';
+					pg +='<div class="col-lg-6"><textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<northcommandlist.length;c++){
+						pg+=northcommandlist[c]+'\n';
+					}
+					pg +='</textarea></div><div class="col-lg-6">';
+					pg +='<textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<northcommandlist2.length;c++){
+						pg+=northcommandlist2[c]+'\n';
+					}
+					pg +='</textarea></div>';
+					pg+='<h3 class="row col-sm-12 justify-content-center">East Commands:</h3>';
+					pg+='<div class="col-sm-12" id="Offsetcell">'+eastoffset+'</div>';
+					pg +='<div class="col-lg-6"><textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<eastcommandlist.length;c++){
+						pg+=eastcommandlist[c]+'\n';
+					}
+					pg +='</textarea></div><div class="col-lg-6">';
+					pg +='<textarea rows="10" class="form-control mb-3" style="resize:both">';
+					for(var c=0;c<eastcommandlist2.length;c++){
+						pg+=eastcommandlist2[c]+'\n';
+					}
+					pg +='</textarea></div>';
+					pg+='<div class="col-sm-12"><input type="button" value="Show Block Data" class="btn btn-primary" onclick="displayCurrentBlockData();"><div>';
+				pg += '</div>'
+			pg += '</div>';
+			get('importbody').innerHTML=pg;
+		}
+		function displayCurrentBlockData(){
+			dosmashtypes();
+			var pg ='<div class="row m-3">';
+				pg += '<div class="p-3 bg-light text-dark row border border-primary rounded justify-content-center">';
+					pg+='<h3 class="row col-sm-12 justify-content-center">Block data for building:</h3>';
+					pg+='<dt class="col-sm-3">Lowest block:</dt><dd class="col-sm-9">'+getBlockStr(lowestblock)+'</dd>';
+					pg+='<dt class="col-sm-3">Highest block:</dt><dd class="col-sm-9">'+getBlockStr(highestblock)+'</dd>';
+					for(var t=0;t<blocktypes.length;t++){
+						pg+='<dt class="col-sm-1"><select id="SlGrp'+t+'"><option value="0">1<option value="1">2</select></dt><dt class="col-sm-3" title="'+blocktypes[t].command+'">'+blocktypes[t].name+' count:</dt><dd class="col-sm-8">'+blocktypes[t].count+'</dd>';
+					}
+				pg += '</div>'
+			pg += '</div>';
+			pg +='<div class="row m-3">';
+				pg += '<div class="p-3 bg-light text-dark row border border-primary rounded justify-content-center">';
+					pg+='<h3 class="row col-sm-12 justify-content-center">Summary data for building:</h3>';
+					for(var t=0;t<condensedtypes.length;t++){
+						pg+='<dt class="col-sm-3" title="'+condensedtypes[t].name+'">'+condensedtypes[t].name+' count:</dt><dd class="col-sm-9">'+condensedtypes[t].count+'</dd>';
+					}
+					pg+='<dt class="col-sm-3">Total number of blocks:</dt><dd class="col-sm-9">'+blocks.length+'</dd>';
+					pg+='<input type="button" value="Create Commands" class="btn btn-primary" onclick="createNESWData();">';
+					pg+='<form id="UploadForm" action="upload.php" method="post" enctype="multipart/form-data" target="upload_target">';
+                    pg+='<input class="d-none" name="fileupload[]" id="fileupload" onchange="DifFile=true;UploadFile();" type="file" multiple>';
+                    pg+='<input type="button" value="Select File" onclick=get("fileupload").click(); class="btn btn-outline-light btn-block" />';
+					pg+='</form>'
+				pg += '</div>'
+			pg += '</div>';
+			get('importbody').innerHTML=pg;
+		}
+		function UploadFile(){
+			if(get("fileupload").value==""){return false;}
+			pleaseWait("Uploading file...");
+			get("UploadForm").submit();
+		}
+		function startup(){
+			DrawImportBuildings();
+		}
+		function fadeBackground(){
+			ElToAdd = document.createElement("div");
+			ElToAdd.id="fadeBkgrd";
+			ElToAdd.className="modal-backdrop fade show";
+			document.body.appendChild(ElToAdd);
+			get("fadeBkgrd").style.display="inherit";
+		}
+		function clearBackground(){
+			deletetheEl('fadeBkgrd');
+		}
+		function hideMsg(){
+			if(get("msgDialog")){
+				deletetheEl('msgDialog');
+				clearBackground();
+			}
+		}
+		function deletetheEl(elName){
+			var el = get(elName);
+			el.parentNode.removeChild(el);
+		}
+		function setMsg(theMsg){
+			hideMsg();
+			if(get("msgDialog")){
+				hideMsg();
+			}
+			fadeBackground();
+			ElToAdd = document.createElement("div");
+			ElToAdd.id="msgDialog";
+			ElToAdd.className="modal fade text-dark show";
+			document.body.appendChild(ElToAdd);
+			get("msgDialog").style.display="inherit";
+			ElToAdd.innerHTML=theMsg;
+		}
+    </script>
+  </head>
+
+  <body id="content" onload="startup()">
+	<iframe style="display:none" id="upload_target" name="upload_target" style="width:0;height:0;border:0px solid #fff;"></iframe>
+	<nav class="navbar navbar-expand-sm bg-dark navbar-dark fixed-top" id="main-nav">
+	  <div class="container">
+		<button
+		  class="navbar-toggler"
+		  data-toggle="collapse"
+		  data-target="#navbarCollapse"
+		>
+		  <span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse" id="navbarCollapse">
+		  <ul class="navbar-nav ml-auto">
+			<li class="nav-item">
+			  <a href="index.html" class="nav-link">Overview</a>
+			</li>
+			<li class="nav-item">
+			  <a href="import.html" class="nav-link">Import</a>
+			</li>
+			<li class="nav-item dropdown">
+				<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+				Commands
+				</a>
+				<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+					<a class="dropdown-item" href="javascript:generateBuildingFunctions()">Buildings</a>
+					<a class="dropdown-item" href="#">Decor</a>
+				</div>
+			</li>
+		  </ul>
+		</div>
+	  </div>
+	</nav>
+	<header id="home-section" class="importimg">
+      <div class="dark-overlay">
+        <div class="home-inner container-fluid" id="importbody">
+        </div>
+      </div>
+    </header>
+  </body>
+</html>

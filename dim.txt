@@ -1,0 +1,23 @@
+inn	-15 -1 -27
+
+farm	-9 -1 -21  18 18 23
+
+house	-16 -1 -22
+
+toolsmith -10 -1 -26
+
+sheep	-10 -1 -18
+
+sawmill -16 -2 -25
+
+mason -8 -1 -27
+
+castle -43 -1 -92 
+
+island -21 10 -42
+
+tree -9 -2 -14
+tree2 -13 -2 -14
+tree3 -16 -1 -21
+
+florist -4 -1 -19
